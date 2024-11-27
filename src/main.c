@@ -7,11 +7,14 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    //fopen(const char* file name. const char * mode)
     fp = fopen(argv[1], "r+");
     if (fp == NULL) {
         printf("%s this does not exist.\n", argv[1]);
         return -1;
     }
+   
+
 
     // This will have the information from BPB as well as initialize any of the important global variables.
     fread(&bpb, sizeof(BPB), 1, fp);
@@ -42,6 +45,11 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < tokens->size; i++) {
             printf("token %d: (%s)\n", i, tokens->items[i]);
         }
+         
+         if (strcmp(tokens->items[0], "info") == 0) {
+        info();
+        }
+        
 
         free(input);
         free_tokens(tokens);

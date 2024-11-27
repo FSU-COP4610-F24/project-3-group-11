@@ -87,3 +87,18 @@ void free_tokens(tokenlist *tokens) {
     free(tokens->items);
     free(tokens);
 }
+
+void info(){
+
+    unsigned int ds = bpb.BPB_TotSec32 - (bpb.BPB_RsvdSecCnt + (bpb.BPB_NumFATs * bpb.BPB_FATSz32));
+    unsigned int total = ds / bpb.BPB_SecsPerClus;
+    unsigned int image_size = bpb.BPB_TotSec32 * bpb.BPB_BytesPerSec;
+
+    printf("Position of root cluster: %u\n", bpb.BPB_RootClus);
+    printf("Bytes per Sector: %u\n", bpb.BPB_BytesPerSec);
+    printf("Sectors per Cluster: %u\n", bpb.BPB_SecsPerClus);
+    printf("Number of FATs: %u\n", bpb.BPB_NumFATs);
+    printf("Total # of clusters in the data region: %u\n", total);
+    printf("# of entries in one FAT: %u\n", bpb.BPB_RootClus);
+    printf("Size of one image: %u sectors\n", image_size);
+}
