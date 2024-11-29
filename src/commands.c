@@ -102,3 +102,4 @@ void info(){
     printf("# of entries in one FAT: %u\n", bpb.BPB_RootClus);
     printf("Size of one image: %u sectors\n", image_size);
 }
+

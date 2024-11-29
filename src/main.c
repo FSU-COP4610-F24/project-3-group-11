@@ -1,5 +1,5 @@
 #include "commands.h"
-
+#include "commands.c"
 
 int main(int argc, char *argv[]) {
     if (argc != 2) { // The number of arguments will be checked.

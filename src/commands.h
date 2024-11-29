@@ -17,7 +17,23 @@ tokenlist *get_tokens(char *input);
 tokenlist *new_tokenlist(void);
 void add_token(tokenlist *tokens, char *item);
 void free_tokens(tokenlist *tokens);
+void info();
 
+//Part 3 functions
+void mkdir(char *DIRNAME);
+void creat(char *FILENAME);
+//Part 4 functions
+void open(char *FILENAME, int FLAGS);
+void close(char *FILENAME);
+void lsof(void);
+void size(char *FILENAME);
+void lseek(char * FILENAME, unsigned int OFFSET);
+void read(char * FILENAME, unsigned int size); 
+
+
+//Additonal funtions
+bool dir_location(DIRNAME); //This function will check if the dir name is exist or not. 
+unsigned int current_clus(); //This function will get the current cluster.
 // Global variables
 extern CWD cwd;
 extern FILE *fp;
@@ -69,4 +85,20 @@ typedef struct __attribute__((packed))
     unsigned short Signature_word;
 } BPB;
 
+typedef struct __attribute__((packed))
+{
+    unsigned char DIR_Name[11];
+    unsigned char DIR_Attr;
+    unsigned char DIR_NTRes
+    unsigned char DIR_CrtTimeTenth;
+    unsigned short DIR_CrtTime;
+    unsigned short DIR_CrtDate;
+    unsigned short DIR_LastAccDate;
+    unsigned short DIR_FstClusterHi;
+    unsigned short DIR_FstClusterLow;
+    unsigned short DIR_WriteTime;
+    unsigned short WriteDate;
+    unsigned int DIR_file_Size;
+    
+} DirEntry;
 #endif // COMMANDS_H
