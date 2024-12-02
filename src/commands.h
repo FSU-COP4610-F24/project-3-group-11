@@ -1,10 +1,11 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define PATH_SIZE 256
+#define MAX_FILES_OPEN 10
 // Tokenlist structure
 typedef struct {
     int size;
@@ -32,25 +33,22 @@ void read(char * FILENAME, unsigned int size);
 
 
 //Additonal funtions
-bool dir_location(DIRNAME); //This function will check if the dir name is exist or not. 
+//int dir_location(char DIRNAME); //This function will check if the dir name is exist or not. 
 unsigned int current_clus(); //This function will get the current cluster.
-// Global variables
-extern CWD cwd;
-extern FILE *fp;
-extern BPB bpb;
-extern DirEntry current_entry;
-extern opened_file files_opened[10];
 
-extern unsigned long fat_begin_lba;
-extern unsigned long cluster_begin_lba;
-extern unsigned char cluster_sectors;
-extern unsigned long root_directory_first_cluster;
-extern unsigned long root_dir_clusters;
-extern unsigned long first_data_sector;
-extern unsigned long first_data_sector_offset;
-extern unsigned long Partition_LBA_Begin;
-extern unsigned long currentDirectory;
-extern int number_files_open;
+
+typedef struct {
+    char path[PATH_SIZE];     // Path of the current working directory
+    unsigned long root_offset; // Offset for the root directory
+    unsigned long byte_offset; // Byte offset within the filesystem
+    unsigned long cluster;    // Cluster index for the current directory
+} CWD;
+
+typedef struct {
+    char filename[256];
+    int descriptor;
+    unsigned int cluster;
+} opened_file;
 
 typedef struct __attribute__((packed))
 {
@@ -89,7 +87,7 @@ typedef struct __attribute__((packed))
 {
     unsigned char DIR_Name[11];
     unsigned char DIR_Attr;
-    unsigned char DIR_NTRes
+    unsigned char DIR_NTRes;
     unsigned char DIR_CrtTimeTenth;
     unsigned short DIR_CrtTime;
     unsigned short DIR_CrtDate;
@@ -101,4 +99,24 @@ typedef struct __attribute__((packed))
     unsigned int DIR_file_Size;
     
 } DirEntry;
+
+
+
+//Global Variables
+extern CWD cwd;
+extern FILE *fp;
+extern BPB bpb;
+extern DirEntry current_entry;
+extern opened_file files_opened[10];
+
+extern unsigned long fat_begin_lba;
+extern unsigned long cluster_begin_lba;
+extern unsigned char cluster_sectors;
+extern unsigned long root_directory_first_cluster;
+extern unsigned long root_dir_clusters;
+extern unsigned long first_data_sector;
+extern unsigned long first_data_sector_offset;
+extern unsigned long Partition_LBA_Begin;
+extern unsigned long currentDirectory;
+extern int number_files_open;
 #endif // COMMANDS_H
