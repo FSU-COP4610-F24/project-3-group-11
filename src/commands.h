@@ -18,7 +18,10 @@ tokenlist *get_tokens(char *input);
 tokenlist *new_tokenlist(void);
 void add_token(tokenlist *tokens, char *item);
 void free_tokens(tokenlist *tokens);
+
 void info();
+void cd(char *DIRNAME);
+void ls();
 
 //Part 3 functions
 void mkdir(char *DIRNAME);
@@ -36,14 +39,15 @@ void exit_program();
 //Additonal funtions
 int dir_location(char DIRNAME); //This function will check if the dir name is exist or not. 
 unsigned int current_clus(); //This function will get the current cluster.
-
+unsigned int get_first_data_sector();
+unsigned int sectors_to_bytes(unsigned int);
 
 typedef struct {
     char path[PATH_SIZE];     // this will be the part of CWD
     unsigned long root_offset; // this is the offset for the root directory.
     unsigned long byte_offset; // this is the byte offset
-    unsigned long cluster;    // this is the cluster index for the current directory
-} CWD;
+    unsigned long cluster;
+ } CWD;
 
 typedef struct {
     char filename[256];
@@ -57,7 +61,7 @@ typedef struct __attribute__((packed))
     unsigned char BS_OEMName[8];
     unsigned short BPB_BytesPerSec;
     unsigned char BPB_SecsPerClus;
-    unsigned short BPB_RsvdSecCnt;
+    unsigned short BPB_RsvdSecCnt;  
     unsigned char BPB_NumFATs;
     unsigned short BPB_RootEntCnt;
     unsigned short BPB_TotSec16;
@@ -110,14 +114,14 @@ extern BPB bpb;
 extern DirEntry current_entry;
 extern opened_file files_opened[10];
 
-extern unsigned long fat_begin_lba;
-extern unsigned long cluster_begin_lba;
-extern unsigned char cluster_sectors;
-extern unsigned long root_directory_first_cluster;
-extern unsigned long root_dir_clusters;
-extern unsigned long first_data_sector;
-extern unsigned long first_data_sector_offset;
-extern unsigned long Partition_LBA_Begin;
-extern unsigned long currentDirectory;
-extern int number_files_open;
+// extern unsigned long fat_begin_lba;
+// extern unsigned long cluster_begin_lba;
+// extern unsigned char cluster_sectors;
+// extern unsigned long root_directory_first_cluster;
+// extern unsigned long root_dir_clusters;
+// extern unsigned long first_data_sector;
+// extern unsigned long first_data_sector_offset;
+// extern unsigned long Partition_LBA_Begin;
+// extern unsigned long currentDirectory;
+// extern int number_files_open;
 #endif // COMMANDS_H

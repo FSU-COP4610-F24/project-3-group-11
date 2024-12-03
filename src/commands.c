@@ -188,3 +188,28 @@ unsigned int current_clus(){
         }
     }
 }
+
+// int dir_location(char DIRNAME){
+//       DirEntry dir;
+//       unsigned long cluster=cwd.cluster;
+//       unsigned long 
+// } 
+
+
+// void cd(char *DIRNAME){
+
+
+// }
+
+unsigned int get_first_data_sector(){
+    return bpb.BPB_RsvdSecCnt+(bpb.BPB_NumFATs*bpb.BPB_FATSz32);
+}
+
+unsigned int sectors_to_bytes( unsigned int sector) {
+    return sector * bpb.BPB_BytesPerSec;
+}
+
+void ls(){
+    // fseek(sectors_to_bytes(first_data_sector(cwd.cluster)))
+
+}

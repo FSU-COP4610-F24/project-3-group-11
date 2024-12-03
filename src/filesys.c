@@ -46,11 +46,15 @@ int main(int argc, char *argv[]) {
         }
          
          if (strcmp(tokens->items[0], "info") == 0) {
-        info();
+            info();
         }
         if (strcmp(tokens->items[0], "exit") == 0) {
-        exit_program();      
+            exit_program();      
         }
+        if (strcmp(tokens->items[0], "ls") == 0) {
+            ls();      
+        }
+        
         if(strcmp(tokens->items[0], "mkdir")== 0)
         {
            if(tokens->size < 2)
