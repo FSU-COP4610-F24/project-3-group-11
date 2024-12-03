@@ -121,7 +121,8 @@ void mkdir(char *DIRNAME){
         {
             if(files_opened[i].descriptor != 0 && strcmp(files_opened[i].filename, DIRNAME)== 0)
             {
-                printf("Error: Directory '%s' exists\n.");
+                printf("Error: Directory '%s' exists.\n", DIRNAME);
+                return;
             }
         }
 
@@ -131,9 +132,24 @@ void mkdir(char *DIRNAME){
         if(new_clus == 0)
         {
             printf("No clusters available. \n");
+            return;
         }
+        //This will create a directorty entry
+        DirEntry newdir= {0};
+        strncpy((char*) newdir.DIR_Name, DIRNAME,11);
+        newdir.DIR_Attr = 0x10;
+        newdir.DIR_FstClusterLow = new_clus & 0xFFFF;
+        newdir.DIR_FstClusterHi = 0;
+        newdir.DIR_file_Size = 0;
 
+        //We have to write the directory entry to the current dirrectory
+        fwrite(&newdir,sizeof(DirEntry), 1, fp);
 
+    }
+    else
+    {
+        printf("Error: Directory name '%s' is long. \n", DIRNAME);
+        return;
     }
 }
 
@@ -161,6 +177,14 @@ unsigned int current_clus(){
             unsigned int end_of_chain_marker = 0x0FFFFFFF; //This is the end of chain marker for FAT32
             fwrite(&end_of_chain_marker, sizeof(unsigned int), 1,fp );
             return clus;
+        }
+        clus++;
+
+        //Creating a check so we dont go over the boundary
+        if(clus >= (bpb.BPB_TotSec32 - first_data_sector)/cluster_sectors)
+        {
+            printf("There are no free clusters available.\n");
+            return 0;
         }
     }
 }

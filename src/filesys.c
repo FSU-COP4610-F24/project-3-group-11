@@ -49,8 +49,18 @@ int main(int argc, char *argv[]) {
         info();
         }
         if (strcmp(tokens->items[0], "exit") == 0) {
-        exit_program();
-}
+        exit_program();      
+        }
+        if(strcmp(tokens->items[0], "mkdir")== 0)
+        {
+           if(tokens->size < 2)
+           {
+            printf("There is no directory name specified. \n");
+           }
+           else{
+            mkdir(tokens->items[1]);
+           }
+        }
         
 
         free(input);
