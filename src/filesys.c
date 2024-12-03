@@ -48,6 +48,9 @@ int main(int argc, char *argv[]) {
          if (strcmp(tokens->items[0], "info") == 0) {
         info();
         }
+        if (strcmp(tokens->items[0], "exit") == 0) {
+        exit_program();
+}
         
 
         free(input);

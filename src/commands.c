@@ -103,3 +103,64 @@ void info(){
     printf("Size of one image: %u sectors\n", image_size);
 }
 
+void exit_program(){
+    if(fp != NULL)
+    {
+        fclose(fp);
+        printf("File had been closed. ");
+    }
+    printf("Exiting the program.");
+}
+
+
+//Part 3 Funtions
+void mkdir(char *DIRNAME){
+    if(strlen(DIRNAME) <= 10) //checks it length is in bounds.
+    {
+        for(int i = 0; i < 10;i++) //This checks if the directoty already exist.
+        {
+            if(files_opened[i].descriptor != 0 && strcmp(files_opened[i].filename, DIRNAME)== 0)
+            {
+                printf("Error: Directory '%s' exists\n.");
+            }
+        }
+
+        //This will allocate new cluster to a new directory.
+        unsigned int new_clus = current_clus();
+
+        if(new_clus == 0)
+        {
+            printf("No clusters available. \n");
+        }
+
+
+    }
+}
+
+
+//Additonal funtions
+unsigned int current_clus(){
+    unsigned int fat_entry;
+    unsigned int clus = 2;
+
+    //I need to seek the beginning of the the FAT file
+    fseek(fp, fat_begin_lba * bpb.BPB_BytesPerSec, SEEK_SET);
+    
+    //This will loop through the FAT table to find a free cluster
+
+    while(1)
+    {
+        fread(&fat_entry, sizeof(unsigned int),1, fp);
+
+        //this is a checker to see if the cluster if free
+        if(fat_entry == 0x00000000)
+        {
+            //I need to mark this cluster off since it will be allocated 
+            fseek(fp, -sizeof(unsigned int), SEEK_CUR);
+
+            unsigned int end_of_chain_marker = 0x0FFFFFFF; //This is the end of chain marker for FAT32
+            fwrite(&end_of_chain_marker, sizeof(unsigned int), 1,fp );
+            return clus;
+        }
+    }
+}

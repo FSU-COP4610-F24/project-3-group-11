@@ -30,18 +30,19 @@ void lsof(void);
 void size(char *FILENAME);
 void lseek(char * FILENAME, unsigned int OFFSET);
 void read(char * FILENAME, unsigned int size); 
+void exit_program();
 
 
 //Additonal funtions
-//int dir_location(char DIRNAME); //This function will check if the dir name is exist or not. 
+int dir_location(char DIRNAME); //This function will check if the dir name is exist or not. 
 unsigned int current_clus(); //This function will get the current cluster.
 
 
 typedef struct {
-    char path[PATH_SIZE];     // Path of the current working directory
-    unsigned long root_offset; // Offset for the root directory
-    unsigned long byte_offset; // Byte offset within the filesystem
-    unsigned long cluster;    // Cluster index for the current directory
+    char path[PATH_SIZE];     // this will be the part of CWD
+    unsigned long root_offset; // this is the offset for the root directory.
+    unsigned long byte_offset; // this is the byte offset
+    unsigned long cluster;    // this is the cluster index for the current directory
 } CWD;
 
 typedef struct {
