@@ -205,11 +205,18 @@ unsigned int get_first_data_sector(){
     return bpb.BPB_RsvdSecCnt+(bpb.BPB_NumFATs*bpb.BPB_FATSz32);
 }
 
+unsigned int first_sector_of_cluster(unsigned int clusterNumber){
+    return ((clusterNumber-2)*bpb.BPB_SecsPerClus)+get_first_data_sector();
+}
+
 unsigned int sectors_to_bytes( unsigned int sector) {
     return sector * bpb.BPB_BytesPerSec;
 }
 
 void ls(){
-    // fseek(sectors_to_bytes(first_data_sector(cwd.cluster)))
+    unsigned long cluster=cwd.cluster;
+    
+
+    fseek(sectors_to_bytes(get_first_data_sector(cwd.cluster))
 
 }

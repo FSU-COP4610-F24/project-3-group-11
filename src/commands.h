@@ -41,6 +41,8 @@ int dir_location(char DIRNAME); //This function will check if the dir name is ex
 unsigned int current_clus(); //This function will get the current cluster.
 unsigned int get_first_data_sector();
 unsigned int sectors_to_bytes(unsigned int);
+unsigned int first_sector_of_cluster(unsigned int clusterNumber);
+
 
 typedef struct {
     char path[PATH_SIZE];     // this will be the part of CWD
@@ -114,14 +116,14 @@ extern BPB bpb;
 extern DirEntry current_entry;
 extern opened_file files_opened[10];
 
-// extern unsigned long fat_begin_lba;
-// extern unsigned long cluster_begin_lba;
-// extern unsigned char cluster_sectors;
-// extern unsigned long root_directory_first_cluster;
-// extern unsigned long root_dir_clusters;
-// extern unsigned long first_data_sector;
-// extern unsigned long first_data_sector_offset;
-// extern unsigned long Partition_LBA_Begin;
-// extern unsigned long currentDirectory;
-// extern int number_files_open;
+extern unsigned long fat_begin_lba;
+extern unsigned long cluster_begin_lba;
+extern unsigned char cluster_sectors;
+extern unsigned long root_directory_first_cluster;
+extern unsigned long root_dir_clusters;
+extern unsigned long first_data_sector;
+extern unsigned long first_data_sector_offset;
+extern unsigned long Partition_LBA_Begin;
+extern unsigned long currentDirectory;
+extern int number_files_open;
 #endif // COMMANDS_H
