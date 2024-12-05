@@ -51,9 +51,20 @@ int main(int argc, char *argv[]) {
         if (strcmp(tokens->items[0], "exit") == 0) {
             exit_program();      
         }
-        if (strcmp(tokens->items[0], "ls") == 0) {
-            ls();      
+        if(strcmp(tokens->items[0], "open")==0)
+        {
+            if(tokens->size != 3)
+            {
+                printf("Error: Invalid usage of open. \n");
+            }
+            else
+            {
+                open(tokens->items[1], tokens->items[2]);
+            }
         }
+        /*if (strcmp(tokens->items[0], "ls") == 0) {
+            ls();      
+        }*/
         
         if(strcmp(tokens->items[0], "mkdir")== 0)
         {

@@ -27,7 +27,7 @@ void ls();
 void mkdir(char *DIRNAME);
 void creat(char *FILENAME);
 //Part 4 functions
-void open(char *FILENAME, int FLAGS);
+void open(const char *FILENAME, const char *FLAGS);
 void close(char *FILENAME);
 void lsof(void);
 void size(char *FILENAME);
@@ -42,8 +42,6 @@ unsigned int current_clus(); //This function will get the current cluster.
 unsigned int get_first_data_sector();
 unsigned int sectors_to_bytes(unsigned int);
 unsigned int first_sector_of_cluster(unsigned int clusterNumber);
-
-
 typedef struct {
     char path[PATH_SIZE];     // this will be the part of CWD
     unsigned long root_offset; // this is the offset for the root directory.
@@ -52,9 +50,10 @@ typedef struct {
  } CWD;
 
 typedef struct {
-    char filename[256];
-    int descriptor;
-    unsigned int cluster;
+    char filename[11]; //This is the name of the file
+    int descriptor; //This is the file discriptor
+    char flags[3]; //This are the different flags/modes it can hold.
+    unsigned int offset; //shows the current offset in bytes.
 } opened_file;
 
 typedef struct __attribute__((packed))
@@ -126,4 +125,13 @@ extern unsigned long first_data_sector_offset;
 extern unsigned long Partition_LBA_Begin;
 extern unsigned long currentDirectory;
 extern int number_files_open;
+
+
+
+
+
+int is_flags(const char *flag);
+int is_file_opened(const char * FILENAME);
+int find_file(const char * FILENAME,DirEntry * entry);
+int adding_to_open_files(const char * FILENAME, const char * flags);
 #endif // COMMANDS_H

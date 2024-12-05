@@ -114,47 +114,133 @@ void exit_program(){
 
 
 //Part 3 Funtions
-void mkdir(char *DIRNAME){
-    if(strlen(DIRNAME) <= 10) //checks it length is in bounds.
-    {
-        for(int i = 0; i < 10;i++) //This checks if the directoty already exist.
-        {
-            if(files_opened[i].descriptor != 0 && strcmp(files_opened[i].filename, DIRNAME)== 0)
-            {
-                printf("Error: Directory '%s' exists.\n", DIRNAME);
-                return;
-            }
-        }
-
-        //This will allocate new cluster to a new directory.
-        unsigned int new_clus = current_clus();
-
-        if(new_clus == 0)
-        {
-            printf("No clusters available. \n");
-            return;
-        }
-        //This will create a directorty entry
-        DirEntry newdir= {0};
-        strncpy((char*) newdir.DIR_Name, DIRNAME,11);
-        newdir.DIR_Attr = 0x10;
-        newdir.DIR_FstClusterLow = new_clus & 0xFFFF;
-        newdir.DIR_FstClusterHi = 0;
-        newdir.DIR_file_Size = 0;
-
-        //We have to write the directory entry to the current dirrectory
-        fwrite(&newdir,sizeof(DirEntry), 1, fp);
-
-    }
-    else
-    {
-        printf("Error: Directory name '%s' is long. \n", DIRNAME);
+void mkdir(char *DIRNAME) {
+    if (strlen(DIRNAME) < 1 || strlen(DIRNAME) > 11) {
+        printf("Error: Directory name '%s' is invalid (too long or empty).\n", DIRNAME);
         return;
     }
+
+    // Check if the directory already exists
+    DirEntry entry;
+    fseek(fp, cwd.root_offset, SEEK_SET);
+    while(fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
+        if (strncmp((char *)entry.DIR_Name, DIRNAME, strlen(DIRNAME)) == 0 &&
+            (entry.DIR_Attr & 0x10)) {
+            printf("Error: Directory '%s' already exists.\n", DIRNAME);
+            return;
+        }
+    }
+
+    // Allocate a new cluster for the directory
+    unsigned int new_clus = current_clus();
+    if (new_clus == 0) {
+        printf("Error: No free clusters available.\n");
+        return;
+    }
+
+    // Create a directory entry
+    DirEntry newdir = {0};
+    strncpy((char *)newdir.DIR_Name, DIRNAME, 11);
+    newdir.DIR_Attr = 0x10;
+    newdir.DIR_FstClusterLow = new_clus & 0xFFFF;
+    newdir.DIR_FstClusterHi = (new_clus >> 16) & 0xFFFF;
+    newdir.DIR_file_Size = 0;
+
+    // Write the directory entry to the current directory
+    fseek(fp, cwd.root_offset, SEEK_SET);
+    while (fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
+        if (entry.DIR_Name[0] == 0x00 || entry.DIR_Name[0] == 0xE5) {
+            fseek(fp, -sizeof(DirEntry), SEEK_CUR);
+            fwrite(&newdir, sizeof(DirEntry), 1, fp);
+            break;
+        }
+    }
+
+    // Initialize the new directory cluster
+    unsigned long cluster_offset = cluster_begin_lba + (new_clus - 2) * cluster_sectors;
+    fseek(fp, cluster_offset * bpb.BPB_BytesPerSec, SEEK_SET);
+
+    
+    printf("Directory '%s' created successfully.\n", DIRNAME);
+    return;
+}
+void creat(char * FILENAME)
+{
+    if(strlen(FILENAME) < 1 || strlen(FILENAME) > 11)
+    {
+        printf("This file is too long or empty. \n");
+        return;
+    }
+
+    //This will check if the file already exist
+    DirEntry ent;
+    fseek(fp, cwd.root_offset, SEEK_SET);
+    while(fread(&ent, sizeof(DirEntry), 1, fp)==1)
+    {
+        if (strncmp((char *)ent.DIR_Name, FILENAME, strlen(FILENAME)) == 0)
+        {
+            printf("Error: FIle already exist. \n");
+            return;
+        }
+    }
+
+    //Directed entry will be created for the new file.
+    DirEntry nFile = {0};
+    strncpy((char*)nFile.DIR_Name, FILENAME, 11);
+    nFile.DIR_Attr = 0x20;
+    nFile.DIR_FstClusterLow = 0; 
+    nFile.DIR_FstClusterHi = 0; 
+    nFile.DIR_file_Size = 0;
+
+    //This will write the file entry to the current dir
+    fseek(fp, cwd.root_offset, SEEK_SET);
+    while(fread(&ent, sizeof(DirEntry), 1, fp) == 1)
+    {
+        if(ent.DIR_Name[0] == 0x00 || ent.DIR_Name[0] == 0xE5)
+        {
+            fseek(fp, -sizeof(DirEntry), SEEK_CUR);
+            fwrite(&nFile, sizeof(DirEntry), 1, fp);
+            printf("File has been successfully created. \n");
+            return;
+        }
+    }
+    printf("Error: No space available to create the file. \n");
+
+}
+void open(const char *FILENAME, const char *flags)
+{
+    //This vill validate the flag
+    if(!is_flags(flags))
+    {
+        printf("Error: Invalid mode. \n");
+        return;
+    }
+    //This will check if the file is already opened
+    if(is_file_opened(FILENAME))
+    {
+        printf("Error: File is alredy opened. \n");
+        return;
+    }
+
+    //This will search for the file in the current directory.
+    DirEntry ent;
+    if(!find_file(FILENAME, &ent))
+    {
+        printf("Error: FIle does not exist. \n");
+        return;
+    }
+    //This will add the file to the files_opened array
+    if(!adding_to_open_files(FILENAME, flags))
+    {
+        printf("Error: Too many files opened. \n");
+        return;
+    }
+
+    printf("File is opened.\n");
 }
 
 
-//Additonal funtions
+///////////////////////////////////////Additonal funtions//////////////////////////////
 unsigned int current_clus(){
     unsigned int fat_entry;
     unsigned int clus = 2;
@@ -189,6 +275,54 @@ unsigned int current_clus(){
     }
 }
 
+int is_flags(const char *flag) 
+{
+    return strcmp(flag, "-r") == 0 || strcmp(flag, "-w") == 0 || strcmp(flag, "-rw") == 0 || strcmp(flag, "-wr") == 0;
+}
+
+
+int is_file_opened(const char * FILENAME)
+{
+    for(int i = 0; i < MAX_FILES_OPEN; i++)
+    {
+        if(files_opened[i].descriptor != 0 && strcmp(files_opened[i].filename, FILENAME)==0)
+        {
+            return 1; //This means the file is opened.
+        }
+    }
+    return 0; //This means the file is not opened.
+}
+
+int find_file(const char * FILENAME,DirEntry * entry)
+{
+    fseek(fp, cwd.root_offset,SEEK_SET);
+    while(fread(entry, sizeof(DirEntry), 1, fp)==1)
+    {
+        if(strncmp((char *)entry->DIR_Name, FILENAME, strlen(FILENAME)) == 0)
+        {
+            if((!(entry->DIR_Attr)) && 0x10 == 0)
+            {
+                return 1; //The file is found;
+            }
+        }
+    }
+    return 0; //The file is not found;
+}
+int adding_to_open_files(const char * FILENAME, const char * flags)
+{
+    for(int i = 0; i < MAX_FILES_OPEN; i++)
+    {
+        if(files_opened[i].descriptor == 0) //meaning empty slot
+        {
+            strcpy(files_opened[i].filename, FILENAME);
+            files_opened[i].descriptor = i + 1; //This will be my unique descriptor
+            strncpy(files_opened[i].flags, flags+1, 2); //This will remove it.
+            files_opened[i].offset = 0;
+            return 1; //This means its been added successfully.
+        }
+    }
+    return 0; //no slots available
+}
 // int dir_location(char DIRNAME){
 //       DirEntry dir;
 //       unsigned long cluster=cwd.cluster;
@@ -213,10 +347,10 @@ unsigned int sectors_to_bytes( unsigned int sector) {
     return sector * bpb.BPB_BytesPerSec;
 }
 
-void ls(){
+/*void ls(){
     unsigned long cluster=cwd.cluster;
     
 
-    fseek(sectors_to_bytes(get_first_data_sector(cwd.cluster))
+    //fseek(sectors_to_bytes(get_first_data_sector(cwd.cluster))
 
-}
+}*/
