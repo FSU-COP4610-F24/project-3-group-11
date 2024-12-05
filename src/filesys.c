@@ -111,10 +111,12 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        /*if (strcmp(tokens->items[0], "ls") == 0) {
+        if (strcmp(tokens->items[0], "ls") == 0) {
             ls();      
-        }*/
-        
+        }
+        if (strcmp(tokens->items[0], "cd") == 0) {
+            cd(tokens->items[1]);      
+        }
         if(strcmp(tokens->items[0], "mkdir")== 0)
         {
            if(tokens->size < 2)

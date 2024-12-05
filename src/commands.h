@@ -21,7 +21,7 @@ void add_token(tokenlist *tokens, char *item);
 void free_tokens(tokenlist *tokens);
 
 void info();
-void cd(char *DIRNAME);
+void cd(char *name);
 void ls();
 
 //Part 3 functions
@@ -53,6 +53,8 @@ typedef struct {
     unsigned long byte_offset; // this is the byte offset
     unsigned long cluster;
  } CWD;
+ 
+unsigned int first_cluster_of_entry(unsigned int lo, unsigned int hi);
 
 typedef struct {
     char filename[11]; //This is the name of the file

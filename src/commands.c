@@ -554,11 +554,6 @@ void read_print_data(unsigned int size)
 // } 
 
 
-// void cd(char *DIRNAME){
-
-
-// }
-
 unsigned int get_first_data_sector(){
     return bpb.BPB_RsvdSecCnt+(bpb.BPB_NumFATs*bpb.BPB_FATSz32);
 }
@@ -572,36 +567,82 @@ unsigned int sectors_to_bytes( unsigned int sector) {
 }
 
 
+unsigned int first_cluster_of_entry(unsigned int lo, unsigned int hi) {
+    return (hi * 65536) + lo;
+}
 
 void ls(){ 
-    unsigned long cluster = cwd.cluster; 
-    unsigned long sector = first_sector_of_cluster(cluster); 
-
-
-    fseek(fp, sectors_to_bytes(sector), SEEK_SET);
+    unsigned long cluster = cwd.cluster; //start cluster
+    unsigned long sector = first_sector_of_cluster(cluster);  //first sector
      
-    bool complete= false; 
     DirEntry entry;
-    
-    while (complete==false) { 
-        
+    fseek(fp, sectors_to_bytes(sector), SEEK_SET); 
+    // printf("%ld", ftell(fp));
+    for(int i = 0; i < bpb.BPB_BytesPerSec * bpb.BPB_SecsPerClus / 32; i++) {
         fread(&entry, sizeof(DirEntry), 1, fp); 
 
-        if (entry.DIR_Name[0] == 0x00) { 
-                break;
-            } 
-        if (entry.DIR_Name[0] == 0xE5) {
-                continue;
-            } 
+        // skip empty
+        if (entry.DIR_Name[0] == 0x00) {  //if empty
+            continue;
+        }
 
+        if(entry.DIR_Attr == (0x01 | 0x02 | 0x04 | 0x08)) {
+            continue;
+        }
 
-        if (entry.DIR_Attr == 0x10) { 
-            // It's a directory, print with a trailing slash
-            printf("%s/\n", entry.DIR_Name); } 
-        else { 
-                // It's a file, print the name
-            printf("%s\n", entry.DIR_Name);
-        } 
-        
-    } 
+        printf("%s\n", entry.DIR_Name); 
+    }
 }
+
+void cd(char * name) {
+    unsigned long cluster = cwd.cluster; //start cluster
+    unsigned long sector = first_sector_of_cluster(cluster);  //first sector
+     
+    DirEntry entry;
+    fseek(fp, sectors_to_bytes(sector), SEEK_SET); 
+    // printf("%ld", ftell(fp));
+    for(int i = 0; i < bpb.BPB_BytesPerSec * bpb.BPB_SecsPerClus / 32; i++) {
+        fread(&entry, sizeof(DirEntry), 1, fp); 
+
+        // skip empty
+        if (entry.DIR_Name[0] == 0x00) {  //if empty
+            continue;
+        }
+
+        if(entry.DIR_Attr == (0x01 | 0x02 | 0x04 | 0x08)) {
+            continue;
+        }
+
+        // trim name
+        for(int i = 0; i < 11; i++) {
+            if(entry.DIR_Name[i] == ' ') {
+                entry.DIR_Name[i] = '\0';
+            }
+        }
+
+        // str compare
+        if(strcmp(entry.DIR_Name, name) == 0) {
+            cwd.cluster = first_cluster_of_entry(entry.DIR_FstClusterLow, entry.DIR_FstClusterHi);
+            
+        }
+    }
+}
+
+    // while (complete==false) { 
+    //     fseek(fp, sectors_to_bytes(sector), SEEK_SET); 
+
+    //     fread(&entry, sizeof(DirEntry), 1, fp); 
+
+    //     if (entry.DIR_Name[0] == 0x00) {  //if empty
+    //             complete=true; 
+    //             break;
+    //         } 
+    //     else if (entry.DIR_Name[0] == 0xE5) { // if deleted. 
+    //             continue;
+    //         } 
+    //     else { 
+    //         printf("%s\n", entry.DIR_Name);
+    //     } 
+
+
+
