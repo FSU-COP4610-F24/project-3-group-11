@@ -113,7 +113,7 @@ void exit_program(){
 }
 
 
-//Part 3 Funtions
+//Part 3 Functions
 void mkdir(char *DIRNAME) {
     if (strlen(DIRNAME) < 1 || strlen(DIRNAME) > 11) {
         printf("Error: Directory name '%s' is invalid (too long or empty).\n", DIRNAME);
@@ -207,6 +207,8 @@ void creat(char * FILENAME)
     printf("Error: No space available to create the file. \n");
 
 }
+
+//Part 4 Functions
 void open(const char *FILENAME, const char *flags)
 {
     //This vill validate the flag
@@ -346,6 +348,45 @@ void read(char * FILENAME, unsigned int size)
     //Need to update the file offset
     files_opened[the_file_index].offset += the_read_size;
 }
+
+//Part 5 Functions
+
+void fs_rename(char *FILENAME, char *NEW_FILENAME) {
+    // Validate the filenames
+    if (strcmp(FILENAME, ".") == 0 || strcmp(FILENAME, "..") == 0) {
+        printf("Error: Cannot rename special directories '.' or '..'.\n");
+        return;
+    }
+
+    // Check if NEW_FILENAME already exists
+    DirEntry entry;
+    fseek(fp, cwd.byte_offset, SEEK_SET);
+    while (fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
+        if (strncmp((char *)entry.DIR_Name, NEW_FILENAME, strlen(NEW_FILENAME)) == 0) {
+            printf("Error: A file or directory with the name '%s' already exists.\n", NEW_FILENAME);
+            return;
+        }
+    }
+
+    // Locate the entry for FILENAME
+    fseek(fp, cwd.byte_offset, SEEK_SET);
+    while (fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
+        if (strncmp((char *)entry.DIR_Name, FILENAME, strlen(FILENAME)) == 0) {
+            // Update the name
+            memset(entry.DIR_Name, ' ', sizeof(entry.DIR_Name)); // Clear old name
+            strncpy((char *)entry.DIR_Name, NEW_FILENAME, strlen(NEW_FILENAME));
+            fseek(fp, -sizeof(DirEntry), SEEK_CUR); // Go back to the entry
+            fwrite(&entry, sizeof(DirEntry), 1, fp);
+            printf("Successfully renamed '%s' to '%s'.\n", FILENAME, NEW_FILENAME);
+            return;
+        }
+    }
+
+    // If we didn't find FILENAME
+    printf("Error: File or directory '%s' not found.\n", FILENAME);
+}
+
+
 ///////////////////////////////////////Additonal funtions//////////////////////////////
 unsigned int current_clus(){
     unsigned int fat_entry;

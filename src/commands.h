@@ -36,6 +36,10 @@ void lseek(char * FILENAME, unsigned int OFFSET);
 void read(char * FILENAME, unsigned int size); 
 void exit_program();
 
+//Part 5 Functions
+void fs_rename(char *FILENAME, char *NEW_FILENAME);
+
+
 
 //Additonal funtions
 int dir_location(char DIRNAME); //This function will check if the dir name is exist or not. 

@@ -125,7 +125,17 @@ int main(int argc, char *argv[]) {
             mkdir(tokens->items[1]);
            }
         }
-        
+        if (strcmp(tokens->items[0], "rename") == 0) 
+        {
+        if (tokens->size < 3) 
+        {
+        printf("Error: Missing arguments for rename command.\n");
+        } 
+        else 
+        {
+        rename(tokens->items[1], tokens->items[2]);
+        }
+        }  
 
         free(input);
         free_tokens(tokens);
