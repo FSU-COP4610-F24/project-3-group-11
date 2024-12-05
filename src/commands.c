@@ -239,7 +239,113 @@ void open(const char *FILENAME, const char *flags)
     printf("File is opened.\n");
 }
 
+void close(char *FILENAME)
+{
+    for(int i = 0; i < MAX_FILES_OPEN; i++)
+    {
+        if(files_opened->descriptor != 0 && strcmp(files_opened[i].filename, FILENAME) == 0)
+        {
+            files_opened[i].descriptor = 0;
+            files_opened[i].filename[0] = '\0';
+            files_opened[i].flags[0] = '\0';
+            files_opened[i].offset = 0;
+            printf("File has been closed successfully. \n");
+            return;
+        }
+    }
+    printf("File is not open or does not exist. \n");
+}
+void size(char * FILENAME)
+{
+    DirEntry ent;
+    if(!find_file(FILENAME, &ent))
+    {
+        printf("Error: The file does not exist. \n");
+        return;
+    }
+    if(ent.DIR_Attr & 0x10)
+    {
+        printf("This is a Directory, not a file. \n");
+        return;
+    }
+    printf("size of '%s': %d bytes. \n", FILENAME, ent.DIR_file_Size);
+}
 
+void lseek(char * FILENAME, unsigned int OFFSET)
+{
+    for(int i = 0; i < MAX_FILES_OPEN; i++)
+    {
+        if(files_opened[i].descriptor != 0 && strcmp(files_opened[i].filename, FILENAME) == 0)
+        {
+            DirEntry ent;
+            if(!find_file(FILENAME, &ent))
+            {
+                printf("Error: File does not exist. \n");
+                return;
+            }
+            if(OFFSET > ent.DIR_file_Size)
+            {
+                printf("Error: Offset exceeds file size. \n");
+                return;
+            }
+            else
+            {
+                files_opened[i].offset = OFFSET;
+                printf("The Offset if the file '%s' is set to %d. \n", FILENAME, OFFSET);
+                return;
+            }
+        }
+    }
+    printf("Error: File is not opened. \n");
+}
+
+void lsof(void)
+{
+    bool Is_found = false;
+    for(int i = 0; i < MAX_FILES_OPEN; i++)
+    {
+        if(files_opened[i].descriptor != 0)
+        {
+            Is_found = true;
+            printf("%d\t%s\t%s\t%d\t%s\n", i, files_opened[i].filename,files_opened[i].flags, files_opened[i].offset, cwd.path);
+        }
+    }
+    if(Is_found == false)
+    {
+        printf("No files opened. \n");
+    }
+}
+
+void read(char * FILENAME, unsigned int size)
+{
+    int the_file_index = get_index(FILENAME);
+
+    //This will validate the file
+    DirEntry ent;
+    if(!validating_file_for_reading(FILENAME, the_file_index, &ent))
+    {
+        return;
+    }
+
+    //This will calculate the read size 
+    unsigned int the_offset = files_opened[the_file_index].offset;
+    unsigned int the_read_size = clac_read_size(the_offset, size, ent.DIR_file_Size);
+
+    if(the_read_size == 0)
+    {
+        printf("The end of the file has been reached. \n");
+            return;
+    }
+
+    //This will correct the offset
+    seeking_file_offset(ent.DIR_FstClusterLow, the_offset);
+
+    //This will read and print the data
+    read_print_data(the_read_size);
+
+    //Need to update the file offset
+    files_opened[the_file_index].offset += the_read_size;
+}
 ///////////////////////////////////////Additonal funtions//////////////////////////////
 unsigned int current_clus(){
     unsigned int fat_entry;
@@ -322,6 +428,83 @@ int adding_to_open_files(const char * FILENAME, const char * flags)
         }
     }
     return 0; //no slots available
+}
+
+int get_index(const char *FILENAME)
+{
+    for(int i = 0; i < MAX_FILES_OPEN; i++)
+    {
+        if (files_opened[i].descriptor != 0)
+        {
+            if(strcmp(files_opened[i].filename, FILENAME) == 0)
+            {
+                return i; //This means the file is not opened.
+            }
+        }
+    }
+    return 0;
+}
+
+int validating_file_for_reading(const char * FILENAME, int index, DirEntry * ent)
+{
+    if(index == -1)
+    {
+        printf("The file is not opened. \n");
+        return 0;
+    }
+    else if (strchr(files_opened[index].flags, 'r') == NULL)
+    {
+        printf("Error: File is not opened for reading. \n");
+        return 0;
+    }
+    else if(!find_file(FILENAME, ent))
+    {
+        printf("Error: File does not exist. \n");
+        return 0;
+    }
+    else if(ent->DIR_Attr & 0x10)
+    {
+        printf("Error: this is a directory, not a file. \n");
+    }
+
+    return 1;
+    
+
+}
+unsigned int clac_read_size(unsigned int offset, unsigned int size, unsigned int file_size)
+{
+    if(offset >= file_size)
+    {
+        return 0; //There is nothing to read.
+    }
+    else if(offset + size > file_size)
+    {
+        return file_size - offset; //This if for the remaining size to be adjusted.
+    }
+    else
+    {
+        return size;
+    }
+}
+void seeking_file_offset(unsigned int clus, unsigned int offset)
+{
+    unsigned int theBytesPerClus = bpb.BPB_BytesPerSec * cluster_sectors;
+    unsigned int ClusOffset = offset % theBytesPerClus;
+    unsigned int long sectOffset = first_sector_of_cluster(clus);
+    fseek(fp, sectOffset + ClusOffset, SEEK_SET);
+}
+void read_print_data(unsigned int size)
+{
+    char * the_buf = (char*) malloc(size + 1);
+    if(!the_buf)
+    {
+        printf("Error: Memory allocation had failed. \n");
+        return;
+    }
+    fread(the_buf, 1, size, fp);
+    the_buf[size] = '\0'; //Null-terminate the buffer
+    printf("Read data: \n%s\n", the_buf);
+    free(the_buf);
 }
 // int dir_location(char DIRNAME){
 //       DirEntry dir;

@@ -62,6 +62,55 @@ int main(int argc, char *argv[]) {
                 open(tokens->items[1], tokens->items[2]);
             }
         }
+        if(strcmp(tokens->items[0], "open") == 0)
+        {
+            if(tokens->size == 2)
+            {
+                close(tokens->items[1]);
+            }
+            else
+            {
+                printf("Error: Incorrect format for open command. \n");
+            }
+        }
+        if(strcmp(tokens->items[0], "lsof") == 0)
+        {
+            lsof();
+        }
+        if(strcmp(tokens->items[0], "size") == 0)
+        {
+            size(tokens->items[1]);
+        }
+        if(strcmp(tokens->items[0], "lseek") == 0)
+        {
+            if(tokens->size == 3)
+            {
+                lseek(tokens->items[1], atoi(tokens->items[2]));
+            }
+            else
+            {
+                printf("incorrect format for lseek. \n");
+            }
+        }
+        if(strcmp(tokens->items[0], "read") == 0)
+        {
+            if(tokens->size == 3)
+            {
+                read(tokens->items[1], atoi(tokens->items[2]));
+            }
+            else
+            {
+                printf("incorrect format for read. \n");
+            }
+        }
+        if(strcmp(tokens->items[0], "exit") == 0)
+        {
+            if(tokens->size == 3)
+            {
+                read(tokens->items[1], atoi(tokens->items[2]));
+            }
+        }
+
         /*if (strcmp(tokens->items[0], "ls") == 0) {
             ls();      
         }*/

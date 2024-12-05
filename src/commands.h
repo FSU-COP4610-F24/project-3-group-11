@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define PATH_SIZE 256
 #define MAX_FILES_OPEN 10
@@ -134,4 +135,10 @@ int is_flags(const char *flag);
 int is_file_opened(const char * FILENAME);
 int find_file(const char * FILENAME,DirEntry * entry);
 int adding_to_open_files(const char * FILENAME, const char * flags);
+
+int get_index(const char *FILENAME);
+int validating_file_for_reading(const char * FILENAME, int index, DirEntry * ent);
+unsigned int clac_read_size(unsigned int offset, unsigned int size, unsigned int file_size);
+void seeking_file_offset(unsigned int clus, unsigned int offset);
+void read_print_data(unsigned int size);
 #endif // COMMANDS_H
