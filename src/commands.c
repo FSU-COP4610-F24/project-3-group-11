@@ -347,10 +347,37 @@ unsigned int sectors_to_bytes( unsigned int sector) {
     return sector * bpb.BPB_BytesPerSec;
 }
 
-/*void ls(){
-    unsigned long cluster=cwd.cluster;
+
+
+void ls(){ 
+    unsigned long cluster = cwd.cluster; 
+    unsigned long sector = first_sector_of_cluster(cluster); 
+
+
+    fseek(fp, sectors_to_bytes(sector), SEEK_SET);
+     
+    bool complete= false; 
+    DirEntry entry;
     
+    while (complete==false) { 
+        
+        fread(&entry, sizeof(DirEntry), 1, fp); 
 
-    //fseek(sectors_to_bytes(get_first_data_sector(cwd.cluster))
+        if (entry.DIR_Name[0] == 0x00) { 
+                break;
+            } 
+        if (entry.DIR_Name[0] == 0xE5) {
+                continue;
+            } 
 
-}*/
+
+        if (entry.DIR_Attr == 0x10) { 
+            // It's a directory, print with a trailing slash
+            printf("%s/\n", entry.DIR_Name); } 
+        else { 
+                // It's a file, print the name
+            printf("%s\n", entry.DIR_Name);
+        } 
+        
+    } 
+}
