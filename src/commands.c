@@ -111,110 +111,191 @@ void exit_program(){
     }
     printf("Exiting the program.");
 }
-
-
-//Part 3 Functions
-void mkdir(char *DIRNAME) {
-    if (strlen(DIRNAME) < 1 || strlen(DIRNAME) > 11) {
-        printf("Error: Directory name '%s' is invalid (too long or empty).\n", DIRNAME);
+//Part 3 Funtions
+void mkdir(char *DIRNAME) 
+{
+    if (strlen(DIRNAME) < 1 || strlen(DIRNAME) > 11) 
+    {
+        printf("Error: Directory name is too long or empty.\n");
         return;
     }
 
-    // Check if the directory already exists
-    DirEntry entry;
+    // This will check is the directory already exists.
+    DirEntry ent;
     fseek(fp, cwd.root_offset, SEEK_SET);
-    while(fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
-        if (strncmp((char *)entry.DIR_Name, DIRNAME, strlen(DIRNAME)) == 0 &&
-            (entry.DIR_Attr & 0x10)) {
-            printf("Error: Directory '%s' already exists.\n", DIRNAME);
+
+    while(fread(&ent, sizeof(DirEntry), 1, fp) == 1) 
+    {
+        if(strncmp((char *)ent.DIR_Name, DIRNAME, strlen(DIRNAME)) == 0)
+        {
+            if(ent.DIR_Attr & 0x10)
+            {
+                printf("Error: Directory already exists.\n");
             return;
+            }
         }
     }
 
-    // Allocate a new cluster for the directory
+    // This will allocate a new cluster for the directory
     unsigned int new_clus = current_clus();
-    if (new_clus == 0) {
+    if (new_clus == 0)
+    {
         printf("Error: No free clusters available.\n");
         return;
     }
 
-    // Create a directory entry
-    DirEntry newdir = {0};
-    strncpy((char *)newdir.DIR_Name, DIRNAME, 11);
-    newdir.DIR_Attr = 0x10;
-    newdir.DIR_FstClusterLow = new_clus & 0xFFFF;
-    newdir.DIR_FstClusterHi = (new_clus >> 16) & 0xFFFF;
-    newdir.DIR_file_Size = 0;
+    //This will create a new directory entry
+    DirEntry ndir = {0};
+    strncpy((char *)ndir.DIR_Name, DIRNAME, 11);
+    ndir.DIR_Attr = 0x10;
+    ndir.DIR_FstClusterLow = new_clus & 0xFFFF;
+    ndir.DIR_FstClusterHi = (new_clus >> 16) & 0xFFFF;
+    ndir.DIR_file_Size = 0;
 
-    // Write the directory entry to the current directory
+    // This will write the directory entry to the current directory
     fseek(fp, cwd.root_offset, SEEK_SET);
-    while (fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
-        if (entry.DIR_Name[0] == 0x00 || entry.DIR_Name[0] == 0xE5) {
+    while (fread(&ent, sizeof(DirEntry), 1, fp) == 1) 
+    {
+        if (ent.DIR_Name[0] == 0x00 || ent.DIR_Name[0] == 0xE5) 
+        {
             fseek(fp, -sizeof(DirEntry), SEEK_CUR);
-            fwrite(&newdir, sizeof(DirEntry), 1, fp);
+            fwrite(&ndir, sizeof(DirEntry), 1, fp);
             break;
         }
     }
 
-    // Initialize the new directory cluster
+    // This will initialize the new directory cluster
     unsigned long cluster_offset = cluster_begin_lba + (new_clus - 2) * cluster_sectors;
     fseek(fp, cluster_offset * bpb.BPB_BytesPerSec, SEEK_SET);
 
+    DirEntry d = {0}; //this is the dot
+    d.DIR_Name[0] = '.';//This is the ftist byte.
+    for(int i = 1; i < 11; i++)
+    {
+        d.DIR_Name[i]= ' ';
+    }
+    d.DIR_Attr = 0x10;
+    d.DIR_FstClusterLow = new_clus & 0xFFFF;
+    d.DIR_FstClusterHi = (new_clus >> 16) & 0xFFFF;
+
+    DirEntry dd = {0}; //this is the dotdot
+    dd.DIR_Name[0] = '.';
+    dd.DIR_Name[1] = '.';
+    for(int i = 2; i < 11; i++)
+    {
+        dd.DIR_Name[1] = ' ';
+    }
+    dd.DIR_Attr = 0x10;
+    dd.DIR_FstClusterLow = cwd.cluster & 0xFFFF;
+    dd.DIR_FstClusterHi = (cwd.cluster >> 16) & 0xFFFF;
+
+    //This will write the new entries to the directory.
+    fseek(fp,cluster_begin_lba + (new_clus -2 )*cluster_sectors *bpb.BPB_BytesPerSec,SEEK_SET);
+    fwrite(&d, sizeof(DirEntry), 1, fp);
+    fwrite(&dd, sizeof(DirEntry),1,fp);
     
-    printf("Directory '%s' created successfully.\n", DIRNAME);
+    printf("Directory created successfully.\n");
     return;
 }
-void creat(char * FILENAME)
-{
-    if(strlen(FILENAME) < 1 || strlen(FILENAME) > 11)
+void creat(char *FILENAME) {
+    if (strlen(FILENAME) > 11 || strlen(FILENAME) < 1) 
     {
-        printf("This file is too long or empty. \n");
+        printf("Error: File name is too long or empty.\n");
         return;
     }
 
-    //This will check if the file already exist
+    // this will check if the file already exist.
     DirEntry ent;
     fseek(fp, cwd.root_offset, SEEK_SET);
-    while(fread(&ent, sizeof(DirEntry), 1, fp)==1)
+    while (fread(&ent, sizeof(DirEntry), 1, fp) == 1) 
     {
-        if (strncmp((char *)ent.DIR_Name, FILENAME, strlen(FILENAME)) == 0)
+        if (ent.DIR_Name[0] == 0x00 || ent.DIR_Name[0] == 0xE5) 
         {
-            printf("Error: FIle already exist. \n");
+            continue;
+        }
+
+        // this creates the name comparison.
+        char name_exist[12] = {0};
+        strncpy(name_exist, (char *)ent.DIR_Name, 8);
+        for (int i = 7; i >= 0; i--) {
+            if (name_exist[i] == ' ') 
+            {
+                name_exist[i] = '\0'; //This will remove the trailing spaces.
+            } 
+            else 
+            {
+                break;
+            }
+        }
+
+        // This will add the exention if present name.
+        if (ent.DIR_Name[8] != ' ') 
+        {
+           size_t length = (strlen(name_exist));
+           name_exist[length] = '.';
+           name_exist[length + 1] = '\0';
+           strncat(name_exist, (char*)&ent.DIR_Name[8], 3);
+        }
+
+        // This will compare the FILENAME with the inputed filename.
+        if (strcmp(name_exist, FILENAME) == 0) 
+        {
+            printf("Error: File already exists. \n");
             return;
         }
     }
 
-    //Directed entry will be created for the new file.
-    DirEntry nFile = {0};
-    strncpy((char*)nFile.DIR_Name, FILENAME, 11);
-    nFile.DIR_Attr = 0x20;
-    nFile.DIR_FstClusterLow = 0; 
-    nFile.DIR_FstClusterHi = 0; 
-    nFile.DIR_file_Size = 0;
+    // This will create a new directory entry for the file
+    DirEntry new_file = {0};
+    memset(new_file.DIR_Name, ' ', 11); // This will fill in the spaces.
+    char *d = strchr(FILENAME, '.');
 
-    //This will write the file entry to the current dir
-    fseek(fp, cwd.root_offset, SEEK_SET);
-    while(fread(&ent, sizeof(DirEntry), 1, fp) == 1)
+    if (d) 
     {
-        if(ent.DIR_Name[0] == 0x00 || ent.DIR_Name[0] == 0xE5)
+        size_t length_of_name = d - FILENAME;
+        size_t length_of_extension = strlen(d + 1);
+
+        if (length_of_name > 8 || length_of_extension > 3) {
+            printf("Error: Filename is too long.\n");
+            return;
+        }
+
+        strncpy((char *)new_file.DIR_Name, FILENAME, length_of_name);
+
+        strncpy((char *)&new_file.DIR_Name[8], d + 1, length_of_extension);
+    } 
+    else 
+    {
+        strncpy((char *)new_file.DIR_Name, FILENAME, strlen(FILENAME));
+    }
+
+    new_file.DIR_Attr = 0x20; 
+    new_file.DIR_FstClusterLow = 0; 
+    new_file.DIR_FstClusterHi = 0;  
+    new_file.DIR_file_Size = 0;
+
+    // this will write the new entry to the current directory
+    fseek(fp, cwd.root_offset, SEEK_SET);
+    while (fread(&ent, sizeof(DirEntry), 1, fp) == 1) 
+    {
+        if (ent.DIR_Name[0] == 0x00 || ent.DIR_Name[0] == 0xE5) 
         {
             fseek(fp, -sizeof(DirEntry), SEEK_CUR);
-            fwrite(&nFile, sizeof(DirEntry), 1, fp);
-            printf("File has been successfully created. \n");
+            fwrite(&new_file, sizeof(DirEntry), 1, fp);
+            printf("File created successfully.\n");
             return;
         }
     }
-    printf("Error: No space available to create the file. \n");
 
+    printf("Error: No available space to create this file.\n");
 }
 
-//Part 4 Functions
 void open(const char *FILENAME, const char *flags)
 {
     //This vill validate the flag
     if(!is_flags(flags))
     {
-        printf("Error: Invalid mode. \n");
+        printf("Error: Invalid mode.\n");
         return;
     }
     //This will check if the file is already opened
@@ -228,7 +309,7 @@ void open(const char *FILENAME, const char *flags)
     DirEntry ent;
     if(!find_file(FILENAME, &ent))
     {
-        printf("Error: FIle does not exist. \n");
+        printf("Error: File does not exist. \n");
         return;
     }
     //This will add the file to the files_opened array
@@ -348,45 +429,6 @@ void read(char * FILENAME, unsigned int size)
     //Need to update the file offset
     files_opened[the_file_index].offset += the_read_size;
 }
-
-//Part 5 Functions
-
-void fs_rename(char *FILENAME, char *NEW_FILENAME) {
-    // Validate the filenames
-    if (strcmp(FILENAME, ".") == 0 || strcmp(FILENAME, "..") == 0) {
-        printf("Error: Cannot rename special directories '.' or '..'.\n");
-        return;
-    }
-
-    // Check if NEW_FILENAME already exists
-    DirEntry entry;
-    fseek(fp, cwd.byte_offset, SEEK_SET);
-    while (fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
-        if (strncmp((char *)entry.DIR_Name, NEW_FILENAME, strlen(NEW_FILENAME)) == 0) {
-            printf("Error: A file or directory with the name '%s' already exists.\n", NEW_FILENAME);
-            return;
-        }
-    }
-
-    // Locate the entry for FILENAME
-    fseek(fp, cwd.byte_offset, SEEK_SET);
-    while (fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
-        if (strncmp((char *)entry.DIR_Name, FILENAME, strlen(FILENAME)) == 0) {
-            // Update the name
-            memset(entry.DIR_Name, ' ', sizeof(entry.DIR_Name)); // Clear old name
-            strncpy((char *)entry.DIR_Name, NEW_FILENAME, strlen(NEW_FILENAME));
-            fseek(fp, -sizeof(DirEntry), SEEK_CUR); // Go back to the entry
-            fwrite(&entry, sizeof(DirEntry), 1, fp);
-            printf("Successfully renamed '%s' to '%s'.\n", FILENAME, NEW_FILENAME);
-            return;
-        }
-    }
-
-    // If we didn't find FILENAME
-    printf("Error: File or directory '%s' not found.\n", FILENAME);
-}
-
-
 ///////////////////////////////////////Additonal funtions//////////////////////////////
 unsigned int current_clus(){
     unsigned int fat_entry;
@@ -440,20 +482,32 @@ int is_file_opened(const char * FILENAME)
     return 0; //This means the file is not opened.
 }
 
-int find_file(const char * FILENAME,DirEntry * entry)
+int find_file(const char * FILENAME,DirEntry * ent)
 {
-    fseek(fp, cwd.root_offset,SEEK_SET);
-    while(fread(entry, sizeof(DirEntry), 1, fp)==1)
+   fseek(fp, cwd.root_offset, SEEK_SET);
+    char the_name[12] = {0}; //formatting the name
+    memset(the_name, ' ', 11); // needed to do some space padding for the the filename and extension name.
+    const char *d = strchr(FILENAME, '.');
+    if (d) {
+        strncpy(the_name, FILENAME, d - FILENAME); // the will copy the name
+        strncpy(the_name+ 8, d + 1, 3); // this will copy the extension.
+    } else
     {
-        if(strncmp((char *)entry->DIR_Name, FILENAME, strlen(FILENAME)) == 0)
+        strncpy(the_name, FILENAME, strlen(FILENAME)); // this had no extension.
+    }
+
+    while (fread(ent, sizeof(DirEntry), 1, fp) == 1) 
+    {
+        if (ent->DIR_Name[0] == 0x00 || ent->DIR_Name[0] == 0xE5)
         {
-            if((!(entry->DIR_Attr)) && 0x10 == 0)
-            {
-                return 1; //The file is found;
-            }
+            continue; //This will skip of delete related entries
+        }
+        if (strncmp((char *)ent->DIR_Name, the_name, 11) == 0) 
+        {
+            return 1; // This means the file has been found.
         }
     }
-    return 0; //The file is not found;
+    return 0; //This means the file has not been found.
 }
 int adding_to_open_files(const char * FILENAME, const char * flags)
 {
@@ -462,9 +516,13 @@ int adding_to_open_files(const char * FILENAME, const char * flags)
         if(files_opened[i].descriptor == 0) //meaning empty slot
         {
             strcpy(files_opened[i].filename, FILENAME);
-            files_opened[i].descriptor = i + 1; //This will be my unique descriptor
+
+            files_opened[i].descriptor = i + 1;
+
             strncpy(files_opened[i].flags, flags+1, 2); //This will remove it.
+
             files_opened[i].offset = 0;
+
             return 1; //This means its been added successfully.
         }
     }
@@ -510,7 +568,6 @@ int validating_file_for_reading(const char * FILENAME, int index, DirEntry * ent
 
     return 1;
     
-
 }
 unsigned int clac_read_size(unsigned int offset, unsigned int size, unsigned int file_size)
 {
@@ -547,12 +604,6 @@ void read_print_data(unsigned int size)
     printf("Read data: \n%s\n", the_buf);
     free(the_buf);
 }
-// int dir_location(char DIRNAME){
-//       DirEntry dir;
-//       unsigned long cluster=cwd.cluster;
-//       unsigned long 
-// } 
-
 
 unsigned int get_first_data_sector(){
     return bpb.BPB_RsvdSecCnt+(bpb.BPB_NumFATs*bpb.BPB_FATSz32);
