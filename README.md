@@ -1,56 +1,54 @@
 # FAT32 File System Utility
 
-[Description]
+[We have created a shell system where it runs through a FAT file.
+Our job is to maninuplate the file and be able to access different things
+within this file.]
 
 ## Group Members
 - **Donald Walton**: djw21c@fsu.edu
-- **Isabela Terra**: add email
-- **James Tanner**: add email
+- **Isabela Terra**: irt21@fsu.edu
+- **James Tanner**: jwt20@fsu.edu
 ## Division of Labor
 
 ### Part 1: Mounting the Image
-- **Responsibilities**: [Description]
+- **Responsibilities**: [Mounted the image to be able to have access to it the FAT32 file.]
 - **Assigned to**: Isabela Terra
 
 ### Part 2: Navigation
-- **Responsibilities**: [Description]
+- **Responsibilities**: [Created ls and cd to navigate through the FAT32 file.]
 - **Assigned to**: Isabela Terra
 
 ### Part 3: Create
-- **Responsibilities**: [Description]
+- **Responsibilities**: [Created mkdir and creat functions to creat things within the fat file.]
 - **Assigned to**: Doanld Walton
 
 ### Part 4: Read
-- **Responsibilities**: [Description]
+- **Responsibilities**: [Created open close lsof read size lseek to be able to have access to different files and to understand their status.]
 - **Assigned to**:Donald Walton
 
 ### Part 5: Update
-- **Responsibilities**: [Description]
+- **Responsibilities**: [Created functions where the user is able to write to a file and rename it.]
 - **Assigned to**: James Tanner
 
 ### Part 6: Delete
-- **Responsibilities**: [Description]
+- **Responsibilities**: [Created functions where the user is able to rm a directory and file from the FAT32 image.]
 - **Assigned to**: James Tanner
 
 ### Extra Credit
-- **Responsibilities**: [Description]
+- **Responsibilities**:
 - **Assigned to**: 
 
 ## File Listing
-```
 filesys/
 │
 ├── src/
-│ ├── lexer.c
-│ └── ...
-│
-├── include/
-│ └── lexer.h
-│ └── ...
+│ ├── filesys.c
+│ └── commands.h
+│ └── commands.c
 │
 ├── README.md
 └── Makefile
-```
+one make is ran an obj folder will be created and a bin folder with the filesys executable in it so it can be ran.
 ## How to Compile & Execute
 
 ### Requirements
