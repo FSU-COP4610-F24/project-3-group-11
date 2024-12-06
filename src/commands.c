@@ -882,28 +882,35 @@ unsigned int first_cluster_of_entry(unsigned int lo, unsigned int hi) {
 
 void ls(){ 
     unsigned long cluster = cwd.cluster; //start cluster
-    unsigned long sector = first_sector_of_cluster(cluster);  //first sector
      
     DirEntry entry;
-    fseek(fp, sectors_to_bytes(sector), SEEK_SET); 
     // printf("%ld", ftell(fp));
-    for(int i = 0; i < bpb.BPB_BytesPerSec * bpb.BPB_SecsPerClus / 32; i++) {
-        fread(&entry, sizeof(DirEntry), 1, fp); 
+    do {
+         unsigned long sector = first_sector_of_cluster(cluster);  //first sector
+        fseek(fp, sectors_to_bytes(sector), SEEK_SET); 
+        for(int i = 0; i < bpb.BPB_BytesPerSec * bpb.BPB_SecsPerClus / 32; i++) {
+            fread(&entry, sizeof(DirEntry), 1, fp); 
 
-        // skip empty
-        if (entry.DIR_Name[0] == 0x00) {  //if empty
-            continue;
+            // skip empty
+            if (entry.DIR_Name[0] == 0x00) {  //if empty
+                continue;
+            }
+
+            if(entry.DIR_Attr == (0x01 | 0x02 | 0x04 | 0x08)) {
+                continue;
+            }
+
+            printf("%s\n", entry.DIR_Name); 
         }
+        cluster=get_next_cluster(cluster);
+    }while(cluster < 0x0FFFFFF8);
 
-        if(entry.DIR_Attr == (0x01 | 0x02 | 0x04 | 0x08)) {
-            continue;
-        }
-
-        printf("%s\n", entry.DIR_Name); 
-    }
+    // while(1){
+        
+    // }
 }
 
-void cd(char * name) {
+void cd(const char * name) {
     unsigned long cluster = cwd.cluster; //start cluster
     unsigned long sector = first_sector_of_cluster(cluster);  //first sector
      
@@ -932,27 +939,12 @@ void cd(char * name) {
         // str compare
         if(strcmp(entry.DIR_Name, name) == 0) {
             cwd.cluster = first_cluster_of_entry(entry.DIR_FstClusterLow, entry.DIR_FstClusterHi);
-            
         }
     }
 }
 
 
 
-    // while (complete==false) { 
-    //     fseek(fp, sectors_to_bytes(sector), SEEK_SET); 
 
-    //     fread(&entry, sizeof(DirEntry), 1, fp); 
-
-    //     if (entry.DIR_Name[0] == 0x00) {  //if empty
-    //             complete=true; 
-    //             break;
-    //         } 
-    //     else if (entry.DIR_Name[0] == 0xE5) { // if deleted. 
-    //             continue;
-    //         } 
-    //     else { 
-    //         printf("%s\n", entry.DIR_Name);
-    //     } 
 
 
