@@ -45,11 +45,23 @@ int main(int argc, char *argv[]) {
             printf("token %d: (%s)\n", i, tokens->items[i]);
         }
          
-         if (strcmp(tokens->items[0], "info") == 0) {
+        if (strcmp(tokens->items[0], "info") == 0) 
+        {
             info();
         }
         if (strcmp(tokens->items[0], "exit") == 0) {
             exit_program();      
+        }
+        if(strcmp(tokens->items[0], "creat") == 0)
+        {
+            if(tokens->size == 2)
+            {
+                creat(tokens->items[1]);
+            }
+            else
+            {
+                printf("Error: Incorrect format for creat command. \n");
+            }
         }
         if(strcmp(tokens->items[0], "open")==0)
         {
@@ -62,7 +74,7 @@ int main(int argc, char *argv[]) {
                 open(tokens->items[1], tokens->items[2]);
             }
         }
-        if(strcmp(tokens->items[0], "open") == 0)
+        if(strcmp(tokens->items[0], "close") == 0)
         {
             if(tokens->size == 2)
             {
@@ -70,7 +82,7 @@ int main(int argc, char *argv[]) {
             }
             else
             {
-                printf("Error: Incorrect format for open command. \n");
+                printf("Error: Incorrect format for close command. \n");
             }
         }
         if(strcmp(tokens->items[0], "lsof") == 0)
@@ -101,13 +113,6 @@ int main(int argc, char *argv[]) {
             else
             {
                 printf("incorrect format for read. \n");
-            }
-        }
-        if(strcmp(tokens->items[0], "exit") == 0)
-        {
-            if(tokens->size == 3)
-            {
-                read(tokens->items[1], atoi(tokens->items[2]));
             }
         }
 
