@@ -38,13 +38,16 @@ int main(int argc, char *argv[]) {
         printf("%s/> ", cwd.path);
 
         input = get_input();
-        printf("whole input: %s\n", input);
+       
 
         tokenlist *tokens = get_tokens(input);
-        for (int i = 0; i < tokens->size; i++) {
-            printf("token %d: (%s)\n", i, tokens->items[i]);
-        }
          
+        if(tokens->size == 0) //a check if no commands were entered.
+        {
+            free(input);
+            free_tokens(tokens);
+            continue;
+        }
         if (strcmp(tokens->items[0], "info") == 0) 
         {
             info();
