@@ -135,9 +135,40 @@ int main(int argc, char *argv[]) {
         } 
         else 
         {
-        rename(tokens->items[1], tokens->items[2]);
+        fs_rename(tokens->items[1], tokens->items[2]);
         }
-        }  
+        }
+        if (strcmp(tokens->items[0], "write") == 0) {
+        if (tokens->size < 3) 
+        {
+        printf("Error: Missing arguments for write command.\n");
+        } 
+        else 
+        {
+        write(tokens->items[1], tokens->items[2]);
+        }
+        }
+        if (strcmp(tokens->items[0], "rm") == 0) 
+        {
+        if (tokens->size < 2) 
+        {
+        printf("Error: Missing filename for rm command.\n");
+        } else 
+        {
+        rm(tokens->items[1]);
+        }
+        }
+        if (strcmp(tokens->items[0], "rmdir") == 0) 
+        {
+        if (tokens->size < 2) 
+        {
+        printf("Error: Missing directory name for rmdir command.\n");
+        } else 
+        {
+        rmdir(tokens->items[1]);
+        }
+        }
+
 
         free(input);
         free_tokens(tokens);

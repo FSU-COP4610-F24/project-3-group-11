@@ -38,8 +38,13 @@ void exit_program();
 
 //Part 5 Functions
 void fs_rename(char *FILENAME, char *NEW_FILENAME);
+void write(char *FILENAME, char *STRING);
+unsigned int get_next_cluster(unsigned int cluster);
+void set_next_cluster(unsigned int cluster, unsigned int next_cluster);
 
-
+//Part 6 Functions
+void rm(char *FILENAME);
+void rmdir(char *DIRNAME);
 
 //Additonal funtions
 int dir_location(char DIRNAME); //This function will check if the dir name is exist or not. 

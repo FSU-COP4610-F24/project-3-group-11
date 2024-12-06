@@ -429,6 +429,264 @@ void read(char * FILENAME, unsigned int size)
     //Need to update the file offset
     files_opened[the_file_index].offset += the_read_size;
 }
+
+//Part 5 Functions
+
+void fs_rename(char *FILENAME, char *NEW_FILENAME) {
+    // Validate the filenames
+    if (strcmp(FILENAME, ".") == 0 || strcmp(FILENAME, "..") == 0) {
+        printf("Error: Cannot rename special directories '.' or '..'.\n");
+        return;
+    }
+
+    // Check if NEW_FILENAME already exists
+    DirEntry entry;
+    fseek(fp, cwd.byte_offset, SEEK_SET);
+    while (fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
+        if (strncmp((char *)entry.DIR_Name, NEW_FILENAME, strlen(NEW_FILENAME)) == 0) {
+            printf("Error: A file or directory with the name '%s' already exists.\n", NEW_FILENAME);
+            return;
+        }
+    }
+
+    // Locate the entry for FILENAME
+    fseek(fp, cwd.byte_offset, SEEK_SET);
+    while (fread(&entry, sizeof(DirEntry), 1, fp) == 1) {
+        if (strncmp((char *)entry.DIR_Name, FILENAME, strlen(FILENAME)) == 0) {
+            // Update the name
+            memset(entry.DIR_Name, ' ', sizeof(entry.DIR_Name)); // Clear old name
+            strncpy((char *)entry.DIR_Name, NEW_FILENAME, strlen(NEW_FILENAME));
+            fseek(fp, -sizeof(DirEntry), SEEK_CUR); // Go back to the entry
+            fwrite(&entry, sizeof(DirEntry), 1, fp);
+            printf("Successfully renamed '%s' to '%s'.\n", FILENAME, NEW_FILENAME);
+            return;
+        }
+    }
+
+    // If we didn't find FILENAME
+    printf("Error: File or directory '%s' not found.\n", FILENAME);
+}
+
+void write(char *FILENAME, char *STRING) 
+{
+    // Check if the file is opened
+    int file_index = -1;
+    for (int i = 0; i < MAX_FILES_OPEN; i++) {
+        if (files_opened[i].descriptor != 0 && strcmp(files_opened[i].filename, FILENAME) == 0) {
+            file_index = i;
+            break;
+        }
+    }
+
+    if (file_index == -1) {
+        printf("Error: File '%s' is not opened.\n", FILENAME);
+        return;
+    }
+
+    // Ensure the file is opened for writing
+    if (strchr(files_opened[file_index].flags, 'w') == NULL) {
+        printf("Error: File '%s' is not opened for writing.\n", FILENAME);
+        return;
+    }
+
+    // Strip quotes from STRING if necessary
+    if (STRING[0] == '"' && STRING[strlen(STRING) - 1] == '"') {
+        STRING[strlen(STRING) - 1] = '\0';
+        STRING++;
+    }
+
+    // Locate the file in the directory
+    DirEntry entry;
+    if (!find_file(FILENAME, &entry)) {
+        printf("Error: File '%s' not found.\n", FILENAME);
+        return;
+    }
+
+    unsigned int offset = files_opened[file_index].offset;
+    unsigned int bytes_per_cluster = bpb.BPB_BytesPerSec * bpb.BPB_SecsPerClus;
+    unsigned int cluster = first_cluster_of_entry(entry.DIR_FstClusterLow, entry.DIR_FstClusterHi);
+    unsigned int string_length = strlen(STRING);
+    unsigned int written = 0;
+
+    // Traverse to the correct cluster based on the offset
+    while (offset >= bytes_per_cluster) {
+        cluster = get_next_cluster(cluster);
+        if (cluster == 0xFFFFFFFF) {
+            printf("Error: Reached end of file cluster chain.\n");
+            return;
+        }
+        offset -= bytes_per_cluster;
+    }
+
+    // Write data to the file
+    while (written < string_length) {
+        unsigned int sector = first_sector_of_cluster(cluster) + (offset / bpb.BPB_BytesPerSec);
+        unsigned int byte_offset = offset % bpb.BPB_BytesPerSec;
+
+        // Seek to the correct position in the file
+        fseek(fp, sectors_to_bytes(sector) + byte_offset, SEEK_SET);
+
+        // Write as much as possible in the current cluster
+        unsigned int write_size = bytes_per_cluster - offset;
+        if (write_size > (string_length - written)) {
+            write_size = string_length - written;
+        }
+        fwrite(&STRING[written], 1, write_size, fp);
+
+        // Update metadata
+        written += write_size;
+        offset += write_size;
+
+        // Allocate a new cluster if needed
+        if (offset >= bytes_per_cluster) {
+            unsigned int new_cluster = current_clus();
+            if (new_cluster == 0) {
+                printf("Error: No more clusters available.\n");
+                return;
+            }
+            set_next_cluster(cluster, new_cluster);
+            cluster = new_cluster;
+            offset = 0;
+        }
+    }
+
+    // Update the file's size and offset
+    files_opened[file_index].offset += written;
+    if (files_opened[file_index].offset > entry.DIR_file_Size) {
+        entry.DIR_file_Size = files_opened[file_index].offset;
+        fseek(fp, -sizeof(DirEntry), SEEK_CUR);
+        fwrite(&entry, sizeof(DirEntry), 1, fp);
+    }
+
+    printf("Successfully wrote '%s' to '%s'.\n", STRING, FILENAME);
+}
+
+unsigned int get_next_cluster(unsigned int cluster) 
+{
+    unsigned int fat_offset = fat_begin_lba * bpb.BPB_BytesPerSec + cluster * 4;
+    unsigned int next_cluster;
+    fseek(fp, fat_offset, SEEK_SET);
+    fread(&next_cluster, sizeof(unsigned int), 1, fp);
+    return next_cluster;
+}
+
+void set_next_cluster(unsigned int cluster, unsigned int next_cluster) 
+{
+    unsigned int fat_offset = fat_begin_lba * bpb.BPB_BytesPerSec + cluster * 4;
+    fseek(fp, fat_offset, SEEK_SET);
+    fwrite(&next_cluster, sizeof(unsigned int), 1, fp);
+}
+
+//Part 6 Functions
+void rm(char *FILENAME) {
+    // Check if the file is opened
+    if (is_file_opened(FILENAME)) {
+        printf("Error: File '%s' is currently opened.\n", FILENAME);
+        return;
+    }
+
+    // Locate the file in the current directory
+    DirEntry entry;
+    if (!find_file(FILENAME, &entry)) {
+        printf("Error: File '%s' does not exist.\n", FILENAME);
+        return;
+    }
+
+    // Ensure the entry is not a directory
+    if (entry.DIR_Attr & 0x10) {
+        printf("Error: '%s' is a directory, not a file.\n", FILENAME);
+        return;
+    }
+
+    // Traverse the FAT table to free all clusters allocated to the file
+    unsigned int cluster = first_cluster_of_entry(entry.DIR_FstClusterLow, entry.DIR_FstClusterHi);
+    unsigned int fat_offset;
+    while (cluster >= 2 && cluster < 0x0FFFFFF8) {
+        fat_offset = fat_begin_lba * bpb.BPB_BytesPerSec + cluster * 4;
+        fseek(fp, fat_offset, SEEK_SET);
+
+        unsigned int next_cluster;
+        fread(&next_cluster, sizeof(unsigned int), 1, fp);
+
+        // Mark the current cluster as free
+        fseek(fp, fat_offset, SEEK_SET);
+        unsigned int free_marker = 0x00000000;
+        fwrite(&free_marker, sizeof(unsigned int), 1, fp);
+
+        // Move to the next cluster
+        cluster = next_cluster;
+    }
+
+    // Mark the directory entry as deleted
+    fseek(fp, -sizeof(DirEntry), SEEK_CUR);
+    entry.DIR_Name[0] = 0xE5; // Mark entry as deleted
+    fwrite(&entry, sizeof(DirEntry), 1, fp);
+
+    printf("File '%s' deleted successfully.\n", FILENAME);
+}
+
+void rmdir(char *DIRNAME) {
+    // Locate the directory in the current directory
+    DirEntry entry;
+    if (!find_file(DIRNAME, &entry)) {
+        printf("Error: Directory '%s' does not exist.\n", DIRNAME);
+        return;
+    }
+
+    // Ensure the entry is a directory
+    if (!(entry.DIR_Attr & 0x10)) {
+        printf("Error: '%s' is not a directory.\n", DIRNAME);
+        return;
+    }
+
+    // Check if the directory is empty
+    unsigned int cluster = first_cluster_of_entry(entry.DIR_FstClusterLow, entry.DIR_FstClusterHi);
+    unsigned int sector = first_sector_of_cluster(cluster);
+    fseek(fp, sectors_to_bytes(sector), SEEK_SET);
+
+    DirEntry subentry;
+    for (int i = 0; i < bpb.BPB_BytesPerSec * bpb.BPB_SecsPerClus / sizeof(DirEntry); i++) {
+        fread(&subentry, sizeof(DirEntry), 1, fp);
+
+        // Skip empty entries or special directories (".", "..")
+        if (subentry.DIR_Name[0] == 0x00 || subentry.DIR_Name[0] == 0xE5) {
+            continue;
+        }
+        if (strncmp((char *)subentry.DIR_Name, ".", 1) == 0 || strncmp((char *)subentry.DIR_Name, "..", 2) == 0) {
+            continue;
+        }
+
+        // If we find any other entry, the directory is not empty
+        printf("Error: Directory '%s' is not empty.\n", DIRNAME);
+        return;
+    }
+
+    // Traverse the FAT table to free the cluster
+    unsigned int fat_offset;
+    while (cluster >= 2 && cluster < 0x0FFFFFF8) {
+        fat_offset = fat_begin_lba * bpb.BPB_BytesPerSec + cluster * 4;
+        fseek(fp, fat_offset, SEEK_SET);
+
+        unsigned int next_cluster;
+        fread(&next_cluster, sizeof(unsigned int), 1, fp);
+
+        // Mark the current cluster as free
+        fseek(fp, fat_offset, SEEK_SET);
+        unsigned int free_marker = 0x00000000;
+        fwrite(&free_marker, sizeof(unsigned int), 1, fp);
+
+        // Move to the next cluster
+        cluster = next_cluster;
+    }
+
+    // Mark the directory entry as deleted
+    fseek(fp, -sizeof(DirEntry), SEEK_CUR);
+    entry.DIR_Name[0] = 0xE5; // Mark entry as deleted
+    fwrite(&entry, sizeof(DirEntry), 1, fp);
+
+    printf("Directory '%s' deleted successfully.\n", DIRNAME);
+}
+
 ///////////////////////////////////////Additonal funtions//////////////////////////////
 unsigned int current_clus(){
     unsigned int fat_entry;
@@ -678,6 +936,8 @@ void cd(char * name) {
         }
     }
 }
+
+
 
     // while (complete==false) { 
     //     fseek(fp, sectors_to_bytes(sector), SEEK_SET); 
