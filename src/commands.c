@@ -399,35 +399,68 @@ void lsof(void)
     }
 }
 
-void read(char * FILENAME, unsigned int size)
-{
-    int the_file_index = get_index(FILENAME);
-
-    //This will validate the file
-    DirEntry ent;
-    if(!validating_file_for_reading(FILENAME, the_file_index, &ent))
-    {
+void read(char *FILENAME, unsigned int size) {
+    int file_index = get_index(FILENAME);
+    if (file_index == -1) {
+        printf("Error: File '%s' is not opened.\n", FILENAME);
         return;
     }
 
-    //This will calculate the read size 
-    unsigned int the_offset = files_opened[the_file_index].offset;
-    unsigned int the_read_size = clac_read_size(the_offset, size, ent.DIR_file_Size);
-
-    if(the_read_size == 0)
-    {
-        printf("The end of the file has been reached. \n");
-            return;
+    DirEntry entry;
+    if (!find_file(FILENAME, &entry)) {
+        printf("Error: File '%s' not found in directory.\n", FILENAME);
+        return;
     }
 
-    //This will correct the offset
-    seeking_file_offset(ent.DIR_FstClusterLow, the_offset);
+    unsigned int offset = files_opened[file_index].offset;
+    unsigned int cluster = first_cluster_of_entry(entry.DIR_FstClusterLow, entry.DIR_FstClusterHi);
+    unsigned int bytes_per_cluster = bpb.BPB_BytesPerSec * cluster_sectors;
+    unsigned int remaining_size = clac_read_size(offset, size, entry.DIR_file_Size);
 
-    //This will read and print the data
-    read_print_data(the_read_size);
+    if (remaining_size == 0) {
+        printf("Error: Nothing to read (offset exceeds file size).\n");
+        return;
+    }
 
-    //Need to update the file offset
-    files_opened[the_file_index].offset += the_read_size;
+    while (offset >= bytes_per_cluster) {
+        cluster = get_next_cluster(cluster);
+        if (cluster >= 0xFFFFFF8) {
+            printf("Error: Reached end of cluster chain.\n");
+            return;
+        }
+        offset -= bytes_per_cluster;
+    }
+
+    // Start reading the data
+    while (remaining_size > 0) {
+        unsigned int sector_offset = first_sector_of_cluster(cluster) + (offset / bpb.BPB_BytesPerSec);
+        unsigned int byte_offset = offset % bpb.BPB_BytesPerSec;
+        unsigned int read_size = bpb.BPB_BytesPerSec - byte_offset;
+
+        if (read_size > remaining_size) {
+            read_size = remaining_size;
+        }
+
+        printf("Debug: Cluster: %u, Sector offset: %u, Byte offset: %u, Read size: %u\n",
+               cluster, sector_offset, byte_offset, read_size);
+
+        fseek(fp, sectors_to_bytes(sector_offset) + byte_offset, SEEK_SET);
+        read_print_data(read_size);
+
+        remaining_size -= read_size;
+        offset += read_size;
+
+        if (remaining_size > 0) {
+            cluster = get_next_cluster(cluster);
+            if (cluster >= 0xFFFFFF8) {
+                printf("Error: Reached end of cluster chain.\n");
+                return;
+            }
+            offset = 0;
+        }
+    }
+
+    files_opened[file_index].offset += size;
 }
 
 //Part 5 Functions
@@ -467,17 +500,9 @@ void fs_rename(char *FILENAME, char *NEW_FILENAME) {
     printf("Error: File or directory '%s' not found.\n", FILENAME);
 }
 
-void write(char *FILENAME, char *STRING) 
-{
-    // Check if the file is opened
-    int file_index = -1;
-    for (int i = 0; i < MAX_FILES_OPEN; i++) {
-        if (files_opened[i].descriptor != 0 && strcmp(files_opened[i].filename, FILENAME) == 0) {
-            file_index = i;
-            break;
-        }
-    }
-
+void write(char *FILENAME, char *STRING) {
+    // Step 1: Validate that the file is open
+    int file_index = get_index(FILENAME);
     if (file_index == -1) {
         printf("Error: File '%s' is not opened.\n", FILENAME);
         return;
@@ -495,30 +520,30 @@ void write(char *FILENAME, char *STRING)
         STRING++;
     }
 
-    // Locate the file in the directory
+    // Step 2: Locate the file and its directory entry
     DirEntry entry;
     if (!find_file(FILENAME, &entry)) {
-        printf("Error: File '%s' not found.\n", FILENAME);
+        printf("Error: File '%s' not found in directory.\n", FILENAME);
         return;
     }
 
-    unsigned int offset = files_opened[file_index].offset;
-    unsigned int bytes_per_cluster = bpb.BPB_BytesPerSec * bpb.BPB_SecsPerClus;
     unsigned int cluster = first_cluster_of_entry(entry.DIR_FstClusterLow, entry.DIR_FstClusterHi);
+    unsigned int offset = files_opened[file_index].offset;
+    unsigned int bytes_per_cluster = bpb.BPB_BytesPerSec * cluster_sectors;
     unsigned int string_length = strlen(STRING);
     unsigned int written = 0;
 
-    // Traverse to the correct cluster based on the offset
+    // Step 3: Traverse to the correct cluster based on the offset
     while (offset >= bytes_per_cluster) {
         cluster = get_next_cluster(cluster);
-        if (cluster == 0xFFFFFFFF) {
-            printf("Error: Reached end of file cluster chain.\n");
+        if (cluster >= 0xFFFFFF8) {
+            printf("Error: Reached end of cluster chain.\n");
             return;
         }
         offset -= bytes_per_cluster;
     }
 
-    // Write data to the file
+    // Step 4: Write the data to the file
     while (written < string_length) {
         unsigned int sector = first_sector_of_cluster(cluster) + (offset / bpb.BPB_BytesPerSec);
         unsigned int byte_offset = offset % bpb.BPB_BytesPerSec;
@@ -533,7 +558,6 @@ void write(char *FILENAME, char *STRING)
         }
         fwrite(&STRING[written], 1, write_size, fp);
 
-        // Update metadata
         written += write_size;
         offset += write_size;
 
@@ -541,7 +565,7 @@ void write(char *FILENAME, char *STRING)
         if (offset >= bytes_per_cluster) {
             unsigned int new_cluster = current_clus();
             if (new_cluster == 0) {
-                printf("Error: No more clusters available.\n");
+                printf("Error: No free clusters available.\n");
                 return;
             }
             set_next_cluster(cluster, new_cluster);
@@ -550,12 +574,21 @@ void write(char *FILENAME, char *STRING)
         }
     }
 
-    // Update the file's size and offset
+    // Step 5: Update the file's metadata
     files_opened[file_index].offset += written;
     if (files_opened[file_index].offset > entry.DIR_file_Size) {
         entry.DIR_file_Size = files_opened[file_index].offset;
-        fseek(fp, -sizeof(DirEntry), SEEK_CUR);
-        fwrite(&entry, sizeof(DirEntry), 1, fp);
+
+        // Update the directory entry
+        fseek(fp, cwd.root_offset, SEEK_SET);
+        DirEntry dir_entry;
+        while (fread(&dir_entry, sizeof(DirEntry), 1, fp) == 1) {
+            if (strncmp((char *)dir_entry.DIR_Name, (char *)entry.DIR_Name, 11) == 0) {
+                fseek(fp, -sizeof(DirEntry), SEEK_CUR);
+                fwrite(&entry, sizeof(DirEntry), 1, fp);
+                break;
+            }
+        }
     }
 
     printf("Successfully wrote '%s' to '%s'.\n", STRING, FILENAME);
