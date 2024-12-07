@@ -48,7 +48,7 @@ filesys/
 │
 ├── README.md
 └── Makefile
-one make is ran an obj folder will be created and a bin folder with the filesys executable in it so it can be ran.
+once make is ran an obj folder will be created and a bin folder with the filesys executable in it so you can run the fat32 file.
 ## How to Compile & Execute
 
 ### Requirements
